@@ -89,6 +89,20 @@ canvas{width:528px;height:248px;display:block;border:3px solid var(--line);borde
 .cell.near{box-shadow:0 0 0 2px rgba(255,207,58,.75)}
 .cell.sel,.cell.sel.near,.cell.sel.open,.cell.sel.held{box-shadow:0 0 0 3px #fff,0 0 10px rgba(255,255,255,.7);z-index:1}
 .cell.swapsel,.cell.swapsel.near,.cell.swapsel.open{box-shadow:0 0 0 3px #7fd0ff}
+/* ===== 완성된 줄 강조 ===== */
+.board{position:relative}
+.board.hasopen .cell:not(.open){opacity:.4;filter:saturate(.45)}
+.board.hasopen .cell.sel:not(.open),.board.hasopen .cell.held:not(.open){opacity:.75;filter:none}
+.cell.open.jp{box-shadow:0 0 0 4px #ffcf3a,0 0 16px 5px rgba(255,207,58,.95);transform:scale(1.05);z-index:2;animation:jpp .7s ease-in-out infinite alternate}
+.cell.open.elo{box-shadow:0 0 0 3px #7fd0ff,0 0 12px 2px rgba(127,208,255,.9);z-index:1}
+@keyframes jpp{from{box-shadow:0 0 0 4px #ffcf3a,0 0 10px 2px rgba(255,207,58,.8)}to{box-shadow:0 0 0 5px #fff3a8,0 0 24px 9px rgba(255,207,58,1)}}
+.lbar{position:absolute;height:9px;border-radius:5px;background:linear-gradient(90deg,#fff8d0,#ffcf3a 50%,#fff8d0);box-shadow:0 0 12px 3px rgba(255,207,58,.95);transform-origin:0 50%;pointer-events:none;z-index:3;opacity:.92;animation:lbp .7s ease-in-out infinite alternate}
+.lbar.el{height:5px;background:#bfe3ff;box-shadow:0 0 8px 2px rgba(127,208,255,.9);animation:none;opacity:.8}
+@keyframes lbp{from{opacity:.65}to{opacity:1}}
+.ltag.jp{font-size:13px;line-height:19px;background:#ffcf3a;color:#2a2233;padding:0 10px;z-index:5}
+.ltag.jp::before{content:"★ 잭팟 · "}
+@media (prefers-reduced-motion:reduce){.cell.open.jp,.lbar{animation:none}}
+
 .cell.joker{background:linear-gradient(135deg,#e8553a,#ffcf3a,#38a356,#2a84dd,#7656bd)}
 .cell.joker .nm{color:#fff;text-shadow:0 1px 0 #000}
 .drawov{position:absolute;left:6px;width:199px;top:6px;height:238px;z-index:2;border-radius:12px;border:3px dashed rgba(255,207,58,.9);background:rgba(15,23,29,.55);color:var(--gold);font-family:var(--display);font-size:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-shadow:0 2px 0 #000;animation:pulse 1.4s ease-in-out infinite}
@@ -548,8 +562,9 @@ const lineDir=li=>li<3?`가로 ${li+1}번째 줄`:li<6?`세로 ${li-2}번째 줄
 function chooseLine(i){const ls=cellLines[i];showPop(`<b>어느 줄을 쓸까요?</b><br>이 카드는 줄 ${ls.length}개에 걸쳐 있습니다. 한 줄을 쓰면 그 줄의 카드 3장이 사라집니다.<div style="display:flex;flex-direction:column;gap:4px;margin-top:5px">${ls.map(li=>{const o=openLines().find(x=>x.li===li);return `<button type="button" class="cbtn ${o.type==='el'?'el':''}" data-pl="${li}">${lineDir(li)} · ${lineAct(o).txt}</button>`}).join('')}</div>`);
   $('pop').querySelectorAll('[data-pl]').forEach(b=>{b.onpointerenter=b.onfocus=()=>hiLine(+b.dataset.pl);b.onclick=()=>{$('pop').hidden=true;hiLine(-1);doClaim(+b.dataset.pl)}})}
 function hiLine(li){document.querySelectorAll('#board .cell').forEach((c,i)=>c.classList.toggle('pick',li>=0&&LINES[li].includes(i)))}
-function renderBoard(){const ol=openLines().sort((a,b)=>(a.type==='hero'?0:1)-(b.type==='hero'?0:1)),nl=nearLines();cellLine={};cellLines={};const midTag={};const elOk=(G.elClaims||0)<2;ol.forEach(o=>{LINES[o.li].forEach(i=>{if(cellLine[i]==null)cellLine[i]=o.li;(cellLines[i]=cellLines[i]||[]).push(o.li)});const m=LINES[o.li][1];if(!midTag[m]&&cellLine[m]===o.li)midTag[m]={o,a:lineAct(o)}});const openC=new Set(),nearC=new Set();ol.forEach(o=>LINES[o.li].forEach(i=>openC.add(i)));nl.forEach(o=>LINES[o.li].forEach(i=>{if(G.board[i])nearC.add(i)}));
-  $('board').innerHTML=G.board.map((c,i)=>`<button type="button" class="cell ${c?(c.joker?'joker':'card'):''} ${G.held.includes(i)?'held':''} ${selCell===i?'sel':''} ${openC.has(i)?'open':nearC.has(i)?'near':''} ${swapFirst===i?'swapsel':''} ${midTag[i]?'tagged':''}" data-i="${i}" aria-label="${CELLN[i]} ${c?(c.joker?'조커':c.name):'빈칸'}${cellLine[i]!=null?', 누르면 줄 사용':''}">${cardHTML(c)}${midTag[i]?`<span class="ltag ${midTag[i].o.type==='el'?'el':''}">${midTag[i].a.tag}</span>`:''}</button>`).join('');
+function renderBoard(){const ol=openLines().sort((a,b)=>(a.type==='hero'?0:1)-(b.type==='hero'?0:1)),nl=nearLines();cellLine={};cellLines={};const midTag={};const elOk=(G.elClaims||0)<2;ol.forEach(o=>{LINES[o.li].forEach(i=>{if(cellLine[i]==null)cellLine[i]=o.li;(cellLines[i]=cellLines[i]||[]).push(o.li)});const m=LINES[o.li][1];if(!midTag[m]&&cellLine[m]===o.li)midTag[m]={o,a:lineAct(o)}});const openC=new Set(),nearC=new Set(),jpC=new Set();ol.forEach(o=>LINES[o.li].forEach(i=>{openC.add(i);if(o.type==='hero')jpC.add(i)}));nl.forEach(o=>LINES[o.li].forEach(i=>{if(G.board[i])nearC.add(i)}));
+  $('board').innerHTML=G.board.map((c,i)=>`<button type="button" class="cell ${c?(c.joker?'joker':'card'):''} ${G.held.includes(i)?'held':''} ${selCell===i?'sel':''} ${openC.has(i)?'open '+(jpC.has(i)?'jp':'elo'):nearC.has(i)?'near':''} ${swapFirst===i?'swapsel':''} ${midTag[i]?'tagged':''}" data-i="${i}" aria-label="${CELLN[i]} ${c?(c.joker?'조커':c.name):'빈칸'}${cellLine[i]!=null?', 누르면 줄 사용':''}">${cardHTML(c)}${midTag[i]?`<span class="ltag ${midTag[i].o.type==='el'?'el':'jp'}">${midTag[i].a.tag}</span>`:''}</button>`).join('');
+  {const cx0=i=>31.5+(i%3)*68,cy0=i=>38+Math.floor(i/3)*81;$('board').insertAdjacentHTML('beforeend',ol.map(o=>{const L=LINES[o.li],a=L[0],b=L[2],dx=cx0(b)-cx0(a),dy=cy0(b)-cy0(a),len=Math.hypot(dx,dy),h=o.type==='hero'?9:5;return `<i class="lbar ${o.type==='el'?'el':''}" style="left:${cx0(a)}px;top:${cy0(a)-h/2}px;width:${len}px;transform:rotate(${Math.atan2(dy,dx)}rad)"></i>`}).join(''));$('board').classList.toggle('hasopen',ol.length>0)}
   $('board').querySelectorAll('.cell').forEach(b=>b.onclick=()=>tapCell(+b.dataset.i));
   let dov=$('drawov');if(G.phase==='prep'&&!G.pending&&G.board.every(c=>!c)){if(!dov){dov=document.createElement('button');dov.type='button';dov.id='drawov';dov.className='drawov';$('board').parentNode.appendChild(dov);dov.onclick=()=>{selCell=-1;after(draw())}}
     const c=drawCost();dov.innerHTML=`🎴 카드 뽑기<small>${c?c+'골드 · 뽑을수록 비싸짐':'무료 뽑기'} · 같은 영웅 3장이 한 줄이면 잭팟</small>`;dov.disabled=G.gold<c;dov.style.opacity=G.gold<c?.5:1}else if(dov)dov.remove();
